@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: cloudjudge
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+        - name: worker
+          image: cloudjudge-worker:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: API_GATEWAY_URL
+              value: "http://api-gateway.cloudjudge.svc.cluster.local:4000"
+            - name: COORDINATOR_GRPC
+              value: "coordinator.cloudjudge.svc.cluster.local:50051"
+            - name: PROTO_PATH
+              value: "/app/proto/judge.proto"
+          resources:
+            requests:
+              cpu: 150m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 384Mi

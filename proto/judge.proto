@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package judge;
+
+service JudgeCoordinator {
+  // Beacon protocol heartbeat from worker to coordinator
+  rpc SendHeartbeat (HeartbeatRequest) returns (HeartbeatResponse);
+
+  // Worker reports completion of a code execution task
+  rpc ReportExecutionResult (ExecutionResultRequest) returns (ExecutionResultResponse);
+
+  // Cluster health and metrics query
+  rpc GetClusterState (ClusterStateRequest) returns (ClusterStateResponse);
+}
+
+message HeartbeatRequest {
+  string worker_id = 1;
+  string hostname = 2;
+  int64 timestamp = 3;
+  int64 lamport_clock = 4;
+  int32 active_jobs = 5;
+  int32 total_processed = 6;
+  double cpu_usage_percent = 7;
+  double memory_mb = 8;
+  string status = 9; // "HEALTHY", "BUSY", "DRAINING"
+}
+
+message HeartbeatResponse {
+  bool acknowledged = 1;
+  int64 coordinator_lamport_clock = 2;
+  string command = 3; // "CONTINUE", "REBALANCE", "TERMINATE"
+}
+
+message ExecutionResultRequest {
+  string submission_id = 1;
+  string worker_id = 2;
+  string status = 3; // "ACCEPTED", "WRONG_ANSWER", "TIME_LIMIT_EXCEEDED", "MEMORY_LIMIT_EXCEEDED", "RUNTIME_ERROR"
+  string stdout = 4;
+  string stderr = 5;
+  int64 execution_time_ms = 6;
+  int64 memory_used_kb = 7;
+  int32 passed_test_cases = 8;
+  int32 total_test_cases = 9;
+  int64 lamport_clock = 10;
+}
+
+message ExecutionResultResponse {
+  bool success = 1;
+  int64 coordinator_lamport_clock = 2;
+}
+
+message ClusterStateRequest {}
+
+message WorkerInfo {
+  string worker_id = 1;
+  string hostname = 2;
+  string status = 3;
+  int64 last_heartbeat = 4;
+  int32 active_jobs = 5;
+  int32 total_processed = 6;
+  double cpu_usage_percent = 7;
+  double memory_mb = 8;
+  bool is_alive = 9;
+}
+
+message ClusterStateResponse {
+  int64 coordinator_lamport_clock = 1;
+  int32 active_workers_count = 2;
+  int32 dead_workers_count = 3;
+  int32 pending_queue_size = 4;
+  repeated WorkerInfo workers = 5;
+}

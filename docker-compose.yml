@@ -1,0 +1,119 @@
+services:
+  # 1. Distributed State & Message Broker
+  redis:
+    image: redis:7-alpine
+    container_name: cloudjudge-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - cloudjudge-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # 2. Coordinator & Failure Detector (gRPC + HTTP)
+  coordinator:
+    build:
+      context: .
+      dockerfile: services/coordinator-service/Dockerfile
+    container_name: cloudjudge-coordinator
+    ports:
+      - "4001:4001"
+      - "50051:50051"
+    environment:
+      - HTTP_PORT=4001
+      - GRPC_PORT=50051
+      - PROTO_PATH=/app/proto/judge.proto
+    networks:
+      - cloudjudge-net
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # 3. API Gateway & Client Ingress (REST + WebSockets)
+  api-gateway:
+    build:
+      context: services/api-gateway
+      dockerfile: Dockerfile
+    container_name: cloudjudge-gateway
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - COORDINATOR_HTTP=http://coordinator:4001
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    networks:
+      - cloudjudge-net
+    depends_on:
+      - coordinator
+
+  # 4. Scalable Execution Worker Node 1
+  worker-1:
+    build:
+      context: .
+      dockerfile: services/worker-service/Dockerfile
+    container_name: cloudjudge-worker-1
+    environment:
+      - WORKER_ID=worker-node-1
+      - API_GATEWAY_URL=http://api-gateway:4000
+      - COORDINATOR_GRPC=coordinator:50051
+      - PROTO_PATH=/app/proto/judge.proto
+    networks:
+      - cloudjudge-net
+    depends_on:
+      - api-gateway
+      - coordinator
+
+  # 5. Scalable Execution Worker Node 2
+  worker-2:
+    build:
+      context: .
+      dockerfile: services/worker-service/Dockerfile
+    container_name: cloudjudge-worker-2
+    environment:
+      - WORKER_ID=worker-node-2
+      - API_GATEWAY_URL=http://api-gateway:4000
+      - COORDINATOR_GRPC=coordinator:50051
+      - PROTO_PATH=/app/proto/judge.proto
+    networks:
+      - cloudjudge-net
+    depends_on:
+      - api-gateway
+      - coordinator
+
+  # 6. Scalable Execution Worker Node 3
+  worker-3:
+    build:
+      context: .
+      dockerfile: services/worker-service/Dockerfile
+    container_name: cloudjudge-worker-3
+    environment:
+      - WORKER_ID=worker-node-3
+      - API_GATEWAY_URL=http://api-gateway:4000
+      - COORDINATOR_GRPC=coordinator:50051
+      - PROTO_PATH=/app/proto/judge.proto
+    networks:
+      - cloudjudge-net
+    depends_on:
+      - api-gateway
+      - coordinator
+
+  # 7. Frontend Web Dashboard
+  frontend:
+    build:
+      context: services/frontend
+      dockerfile: Dockerfile
+    container_name: cloudjudge-frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - cloudjudge-net
+    depends_on:
+      - api-gateway
+
+networks:
+  cloudjudge-net:
+    driver: bridge

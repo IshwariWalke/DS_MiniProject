@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coordinator
+  namespace: cloudjudge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coordinator
+  template:
+    metadata:
+      labels:
+        app: coordinator
+    spec:
+      containers:
+        - name: coordinator
+          image: cloudjudge-coordinator:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4001
+              name: http
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: HTTP_PORT
+              value: "4001"
+            - name: GRPC_PORT
+              value: "50051"
+            - name: PROTO_PATH
+              value: "/app/proto/judge.proto"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: coordinator
+  namespace: cloudjudge
+spec:
+  selector:
+    app: coordinator
+  ports:
+    - name: http
+      port: 4001
+      targetPort: 4001
+    - name: grpc
+      port: 50051
+      targetPort: 50051

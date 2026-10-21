@@ -1,0 +1,14 @@
+{
+  "name": "cloudjudge-worker-service",
+  "version": "1.0.0",
+  "description": "Scalable Execution Worker Node with gRPC Heartbeat and Code Sandboxing",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@grpc/grpc-js": "^1.10.6",
+    "@grpc/proto-loader": "^0.7.12",
+    "ioredis": "^5.4.1"
+  }
+}
